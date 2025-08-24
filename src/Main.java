@@ -1,23 +1,34 @@
+import java.io.File;
 import java.util.Scanner;
 
 public class Main{
+
     public static void main(String[] args) {
-        System.out.println("Введите первое число:");
-        int firstNumber = new Scanner(System.in).nextInt();
 
-        System.out.println("Введите второе число:");
-        int secondNumber = new Scanner(System.in).nextInt();
+        Scanner scanner = new Scanner(System.in);
+        int correctFileCount = 0;
 
-        int summa = firstNumber + secondNumber;
-        System.out.println("Сумма: " + summa);
+        while (true) {
+            System.out.println("Введите путь к файлу:");
+            String filePath = scanner.nextLine();
 
-        int substruct = firstNumber - secondNumber;
-        System.out.println("Разность: " + substruct);
+            // Проверяем существование файла
+            File file = new File(filePath);
+            boolean fileExists = file.exists();
 
-        int multiplication = firstNumber * secondNumber;
-        System.out.println("Произведение: " + multiplication);
+            // Проверяем, является ли путь папкой
+            boolean isDirectory = file.isDirectory();
 
-        double quotient = (double)firstNumber / secondNumber;
-        System.out.println("Частное: " + quotient);
+            // Проверяем условия
+            if (!fileExists || isDirectory) {
+                System.out.println("Путь введён ошибочно, указывает на папку или на несуществующий файл: " + filePath);
+                continue; // Продолжаем цикл
+            }
+
+            // Если файл существует и это действительно файл
+            System.out.println("Путь указан верно");
+            correctFileCount++;
+            System.out.println("Это файл номер " + correctFileCount);
+        }
     }
 }
