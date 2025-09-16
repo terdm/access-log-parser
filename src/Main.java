@@ -1,133 +1,54 @@
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Scanner;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
+import java.io.File;
+import java.io.FileReader;
 public class Main {
 
-
+    public static class LineTooLongException extends RuntimeException {
+        public LineTooLongException(String message) {
+            super(message);
+        }
+    }
 
     public static void processAccessLog(String path) {
+        Statistics statistics = new Statistics();
         int totalLines = 0;
-        int yandexBotCount = 0;
-        int googleBotCount = 0;
 
-        try (FileReader fileReader = new FileReader(path);
-             BufferedReader reader = new BufferedReader(fileReader)) {
-
+        try (BufferedReader reader = new BufferedReader(new FileReader(path))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 // Проверка на максимальную длину строки
                 if (line.length() > 1024) {
                     throw new LineTooLongException(
-                            "Строка #" + (totalLines + 1) + " превышает максимально допустимую длину 1024 символа. " +
-                                    "Длина строки: " + line.length() + " символов."
+                            "Строка #" + (totalLines + 1) + " превышает максимально допустимую длину 1024 символа."
                     );
                 }
 
                 totalLines++;
 
-                // Обработка User-Agent
-                String userAgent = extractUserAgent(line);
+                try {
+                    LogEntry entry = new LogEntry(line);
+                    statistics.addEntry(entry);
 
-                if (userAgent != null) {
-                    String botName = extractBotNameFromUserAgent(userAgent);
-                    if ("Googlebot".equals(botName)) {
-                        googleBotCount++;
-                    } else if ("YandexBot".equals(botName)) {
-                        yandexBotCount++;
-                    }
+
+                } catch (Exception e) {
+                    System.err.println("Ошибка при обработке строки #" + totalLines + ": " + e.getMessage());
                 }
-
-
             }
 
             // Вывод результатов
             System.out.println("Общее количество строк в файле: " + totalLines);
-            System.out.println("Запросов от YandexBot: " + yandexBotCount);
-            System.out.println("Запросов от Googlebot: " + googleBotCount);
-
-            // Вывод долей
-            if (totalLines > 0) {
-                double yandexBotShare = (double) yandexBotCount / totalLines * 100;
-                double googleBotShare = (double) googleBotCount / totalLines * 100;
-
-                System.out.printf("Доля запросов от YandexBot: %.2f%%\n", yandexBotShare);
-                System.out.printf("Доля запросов от Googlebot: %.2f%%\n", googleBotShare);
-            }
+            System.out.println("Успешно обработано записей: " + statistics.getEntryCount());
+            System.out.println("Общий трафик: " + statistics.getTotalTraffic() + " bytes");
+            System.out.println("Период логов: от " + statistics.getMinTime() + " до " + statistics.getMaxTime());
+            System.out.printf("Средний часовой трафик: %.2f bytes/hour\n", statistics.getTrafficRate());
 
         } catch (IOException e) {
             System.err.println("Ошибка при чтении файла: " + e.getMessage());
             e.printStackTrace();
         }
-    }
-
-    // Метод для извлечения User-Agent из строки лога
-    private static String extractUserAgent(String logLine) {
-        // Разделяем строку по пробелам
-        String[] parts = logLine.split(" ");
-
-        // User-Agent
-        // Ищем часть, которая начинается с кавычки и содержит информацию о браузере
-        for (int i = parts.length - 1; i >= 0; i--) {
-            if (parts[i].startsWith("\"") && parts[i].length() > 1) {
-                // Объединяем оставшиеся части для получения полного User-Agent
-                StringBuilder userAgentBuilder = new StringBuilder();
-                for (int j = i; j < parts.length; j++) {
-                    userAgentBuilder.append(parts[j]).append(" ");
-                }
-                String userAgent = userAgentBuilder.toString().trim();
-
-                // Удаляем окружающие кавычки
-                if (userAgent.startsWith("\"") && userAgent.endsWith("\"")) {
-                    userAgent = userAgent.substring(1, userAgent.length() - 1);
-                }
-                return userAgent;
-            }
-        }
-        return null;
-    }
-
-    // Метод для извлечения имени бота из User-Agent
-    private static String extractBotNameFromUserAgent(String userAgent) {
-        // Сначала пытаемся найти по стандартному шаблону (первые скобки)
-        try {
-            Pattern pattern = Pattern.compile("\\(([^)]+)\\)");
-            Matcher matcher = pattern.matcher(userAgent);
-
-            if (matcher.find()) {
-                String firstBrackets = matcher.group(1);
-                String[] parts = firstBrackets.split(";");
-
-                if (parts.length >= 2) {
-                    String fragment = parts[1].trim();
-                    int slashIndex = fragment.indexOf('/');
-                    if (slashIndex != -1) {
-                        String botName = fragment.substring(0, slashIndex).trim();
-
-                        // Проверяем только нужных ботов
-                        if ("Googlebot".equals(botName) || "YandexBot".equals(botName)) {
-                            return botName;
-                        }
-                    }
-                }
-            }
-        } catch (Exception e) {
-            // Продолжаем поиск другими методами
-        }
-
-        // Резервный поиск по всей строке
-        if (userAgent.contains("YandexBot") || userAgent.toLowerCase().contains("yandexbot")) {
-            return "YandexBot";
-        }
-        if (userAgent.contains("Googlebot") || userAgent.toLowerCase().contains("googlebot")) {
-            return "Googlebot";
-        }
-
-        return null;
     }
 
     public static void main(String[] args) {
