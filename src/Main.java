@@ -44,8 +44,10 @@ public class Main {
             System.out.println("Общий трафик: " + statistics.getTotalTraffic() + " bytes");
             System.out.println("Период логов: от " + statistics.getMinTime() + " до " + statistics.getMaxTime());
             System.out.printf("Средний часовой трафик: %.2f bytes/hour\n", statistics.getTrafficRate());
-            System.out.println("Существующие траницы " + statistics.getExistingPages().toString());
+            System.out.println("Существующие страницы " + statistics.getExistingPages().toString());
             System.out.println("Статистика ОС " + statistics.getOperatingSystemStatistics().toString());
+            System.out.println("Неуществующие страницы " + statistics.getNonExistentPages().toString());
+            System.out.println("Статистика браузеров " + statistics.getBrowserStatistics().toString());
 
         } catch (IOException e) {
             System.err.println("Ошибка при чтении файла: " + e.getMessage());

@@ -9,6 +9,12 @@ public class Statistics {
     private LocalDateTime maxTime;
     private int entryCount;
 
+    // Переменная для хранения несуществующих страниц (404)
+    private Set<String> nonExistentPages = new HashSet<>();
+
+    // Переменная для подсчета частоты браузеров
+    private Map<String, Integer> browserFrequency = new HashMap<>();
+
     // Переменная для хранения существующих страниц сайта (код ответа 200)
     private Set<String> existingPages = new HashSet<>();
 
@@ -44,7 +50,54 @@ public class Statistics {
         String os = entry.getUserAgent().getOperatingSystem();
         osFrequency.put(os, osFrequency.getOrDefault(os, 0) + 1);
 
+        // Проверяем код ответа и добавляем в nonExistentPages если 404
+        if (entry.getResponseCode() == 404) {
+            nonExistentPages.add(entry.getPath());
+        }
+
+        // Обновляем статистику браузеров
+        String browser = entry.getUserAgent().getBrowser(); // или метод для получения браузера
+        browserFrequency.put(browser, browserFrequency.getOrDefault(browser, 0) + 1);
     }
+
+    /**
+     * Возвращает список всех несуществующих страниц сайта (код ответа 404)
+     * @return Set<String> с адресами несуществующих страниц
+     */
+    public Set<String> getNonExistentPages() {
+        return new HashSet<>(nonExistentPages);
+    }
+
+    /**
+     * Возвращает статистику браузеров в виде Map с долями (0-1)
+     * @return Map<String, Double> где ключ - название браузера, значение - доля
+     */
+    public Map<String, Double> getBrowserStatistics() {
+        // Вычисляем общее количество записей браузеров
+        int total = browserFrequency.values().stream().mapToInt(Integer::intValue).sum();
+
+        // Создаем новую Map с долями
+        Map<String, Double> browserStatistics = new HashMap<>();
+
+        for (Map.Entry<String, Integer> entry : browserFrequency.entrySet()) {
+            double proportion = (double) entry.getValue() / total;
+            browserStatistics.put(entry.getKey(), proportion);
+        }
+
+        return browserStatistics;
+    }
+
+    // Альтернативная реализация с использованием Stream API
+    public Map<String, Double> getBrowserStatisticsStream() {
+        int total = browserFrequency.values().stream().mapToInt(Integer::intValue).sum();
+
+        return browserFrequency.entrySet().stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> (double) entry.getValue() / total
+                ));
+    }
+
 
     public double getTrafficRate() {
         if (minTime == null || maxTime == null || minTime.equals(maxTime)) {
@@ -127,7 +180,9 @@ public class Statistics {
                 ", trafficRate=" + getTrafficRate() +
                 " bytes/hour}" +
                 " ExistingPages " + getExistingPages().toString() +
-                " getOperatingSystemStatistics " + getOperatingSystemStatistics().toString()
+                " OperatingSystemStatistics " + getOperatingSystemStatistics().toString() +
+                " NonExistentPages" + getNonExistentPages().toString() +
+                " BrowserStatistics" + getBrowserStatistics().toString()
                 ;
     }
 }
