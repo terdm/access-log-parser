@@ -1,5 +1,6 @@
 import java.time.LocalDateTime;
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -8,6 +9,8 @@ public class Statistics {
     private LocalDateTime minTime;
     private LocalDateTime maxTime;
     private int entryCount;
+    private List<LogEntry> entries = new ArrayList<>();
+    private int errorRequestsCount = 0; // Количество ошибочных запросов
 
     // Переменная для хранения несуществующих страниц (404)
     private Set<String> nonExistentPages = new HashSet<>();
@@ -42,7 +45,7 @@ public class Statistics {
             maxTime = entryTime;
         }
         // Добавляем страницу с кодом ответа 200 в список существующих страниц
-        if (entry.getResponseCode() == 200) {
+        if (Objects.equals(entry.getResponseCode(), "200")) {
             existingPages.add(entry.getPath());
         }
 
@@ -51,14 +54,131 @@ public class Statistics {
         osFrequency.put(os, osFrequency.getOrDefault(os, 0) + 1);
 
         // Проверяем код ответа и добавляем в nonExistentPages если 404
-        if (entry.getResponseCode() == 404) {
+        if (Objects.equals(entry.getResponseCode(), "404")) {
             nonExistentPages.add(entry.getPath());
         }
 
         // Обновляем статистику браузеров
         String browser = entry.getUserAgent().getBrowser(); // или метод для получения браузера
         browserFrequency.put(browser, browserFrequency.getOrDefault(browser, 0) + 1);
+
+        entries.add(entry);
+        // Проверяем на ошибочный код ответа (4xx или 5xx)
+        if (isErrorResponse( entry.getResponseCode())) {
+            errorRequestsCount++;
+        }
     }
+    /**
+     * Проверяет, является ли код ответа ошибочным (4xx или 5xx)
+     */
+    private boolean isErrorResponse(String event) {
+        if (event == null || event.trim().isEmpty()) {
+            return false;
+        }
+
+        try {
+            // Предполагаем, что event содержит HTTP код ответа
+            // Например: "GET /page 404", "POST /api 500", etc.
+            String[] parts = event.split(" ");
+            for (String part : parts) {
+                if (part.matches("^[45]\\d\\d$")) {
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            // В случае ошибки парсинга считаем не ошибочным
+        }
+        return false;
+    }
+    /**
+     * Метод подсчёта среднего количества посещений сайта за час
+     * @return среднее количество посещений в час (только не боты)
+     */
+    public double getAverageVisitsPerHour() {
+        if (entries.isEmpty()) {
+            return 0.0;
+        }
+
+        // Фильтруем только не-боты
+        long nonBotVisits = entries.stream()
+                .filter(entry -> !entry.getUserAgent().isBot())
+                .count();
+
+        if (nonBotVisits == 0) {
+            return 0.0;
+        }
+
+        // Находим временной диапазон
+        LocalDateTime minTime = getMinTime();
+        LocalDateTime maxTime = getMaxTime();
+
+        // Вычисляем период в часах
+        long hours = ChronoUnit.HOURS.between(minTime, maxTime);
+        if (hours == 0) {
+            hours = 1; // Минимум 1 час чтобы избежать деления на 0
+        }
+
+        return (double) nonBotVisits / hours;
+    }
+
+    /**
+     * Метод подсчёта среднего количества ошибочных запросов в час
+     * @return среднее количество ошибочных запросов в час
+     */
+    public double getAverageErrorRequestsPerHour() {
+        if (entries.isEmpty() || errorRequestsCount == 0) {
+            return 0.0;
+        }
+
+        // Находим временной диапазон
+        LocalDateTime minTime = getMinTime();
+        LocalDateTime maxTime = getMaxTime();
+
+        // Вычисляем период в часах
+        long hours = ChronoUnit.HOURS.between(minTime, maxTime);
+        if (hours == 0) {
+            hours = 1;
+        }
+
+        return (double) errorRequestsCount / hours;
+    }
+
+    /**
+     * Метод расчёта средней посещаемости одним пользователем
+     * @return средняя посещаемость на одного пользователя (не бота)
+     */
+    public double getAverageVisitsPerUser() {
+        if (entries.isEmpty()) {
+            return 0.0;
+        }
+
+        // Фильтруем только не-боты
+        List<LogEntry> nonBotEntries = entries.stream()
+                .filter(entry -> !entry.getUserAgent().isBot())
+                .collect(Collectors.toList());
+
+        if (nonBotEntries.isEmpty()) {
+            return 0.0;
+        }
+
+        // Количество посещений не-ботами
+        long nonBotVisits = nonBotEntries.size();
+
+        // Количество уникальных IP-адресов не-ботов
+        long uniqueNonBotIps = nonBotEntries.stream()
+                .map(LogEntry::getIpAddr)
+                .distinct()
+                .count();
+
+        if (uniqueNonBotIps == 0) {
+            return 0.0;
+        }
+
+        return (double) nonBotVisits / uniqueNonBotIps;
+    }
+
+
+
 
     /**
      * Возвращает список всех несуществующих страниц сайта (код ответа 404)

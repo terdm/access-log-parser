@@ -4,10 +4,20 @@ import java.util.regex.Matcher;
 public class UserAgent {
     private final String browser;
     private final String operatingSystem;
+    private final String userAgentString;
+
+    public boolean isBot() {
+        return userAgentString.toLowerCase().contains("bot");
+    }
 
     public UserAgent(String userAgentString) {
         this.browser = parseBrowser(userAgentString);
         this.operatingSystem = parseOperatingSystem(userAgentString);
+        this.userAgentString = userAgentString != null ? userAgentString : "";
+    }
+
+    public String getUserAgentString() {
+        return userAgentString;
     }
 
     public String getBrowser() {

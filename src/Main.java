@@ -49,6 +49,10 @@ public class Main {
             System.out.println("Неуществующие страницы " + statistics.getNonExistentPages().toString());
             System.out.println("Статистика браузеров " + statistics.getBrowserStatistics().toString());
 
+            System.out.println("Cреднее количество посещений сайта за час " + statistics.getAverageVisitsPerHour());
+            System.out.println("Cреднее количество ошибочных запросов в час " + statistics.getAverageErrorRequestsPerHour());
+            System.out.println("Cредняя посещаемость одним пользователем " + statistics.getAverageVisitsPerUser());
+
         } catch (IOException e) {
             System.err.println("Ошибка при чтении файла: " + e.getMessage());
             e.printStackTrace();

@@ -9,7 +9,7 @@ public class LogEntry {
     private final LocalDateTime time;
     private final HttpMethod method;
     private final String path;
-    private final int responseCode;
+    private final String responseCode;
     private final int responseSize;
     private final String referer;
     private final UserAgent userAgent;
@@ -41,7 +41,7 @@ public class LogEntry {
         return path;
     }
 
-    public int getResponseCode() {
+    public String getResponseCode() {
         return responseCode;
     }
 
@@ -99,17 +99,10 @@ public class LogEntry {
         return "";
     }
 
-    private int parseResponseCode(String logLine) {
+    private String parseResponseCode(String logLine) {
         Pattern pattern = Pattern.compile("\"\\s+(\\d{3})\\s+");
         Matcher matcher = pattern.matcher(logLine);
-        if (matcher.find()) {
-            try {
-                return Integer.parseInt(matcher.group(1));
-            } catch (NumberFormatException e) {
-                return 0;
-            }
-        }
-        return 0;
+        return matcher.find() ? matcher.group(1) : "";
     }
 
     private int parseResponseSize(String logLine) {
